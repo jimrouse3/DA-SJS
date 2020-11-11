@@ -1,0 +1,438 @@
+---
+title: "Data Transformation"
+author: "Jim Rouse"
+date: "9/10/2020"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 5.1 Introduction
+
+##### 5.1.1 Prerequisites
+
+```{r load_libraries}
+library(nycflights13)
+library(tidyverse)
+```
+
+##### 5.1.2 nycflights13
+
+```{r inspect_flights}
+flights
+```
+
+##### 5.1.3 dplyr basics
+
+In this chapter you are going to learn the five key dplyr functions that allow you to solve the vast majority of your data manipulation challenges:
+
+*Pick observations by their values (filter()).
+*Reorder the rows (arrange()).
+*Pick variables by their names (select()).
+*Create new variables with functions of existing variables (mutate()).
+*Collapse many values down to a single summary (summarize()).
+
+These can all be used in conjunction with group_by() which changes the scope of each function from operating on the entire dataset to operating on it group-by-group. These six functions provide the verbs for a language of data manipulation.
+
+All verbs work similarly:
+
+* 1. The first argument is a data frame.
+* 2. The subsequent arguments describe what to do with the data frame, using the variable names (without quotes).
+* 3. The result is a new data frame.
+
+Together these properties make it easy to chain together multiple simple steps to achieve a complex result. Let’s dive in and see how these verbs work.
+
+### 5.2 Filter rows with filter()
+
+filter() allows you to subset observations based on their values. The first argument is the name of the data frame. The second and subsequent arguments are the expressions that filter the data frame. For example, we can select all flights on January 1st with:
+
+```{r example_1}
+filter(flights, month == 1, day == 1)
+```
+
+```{r example_2}
+jan1 <- filter(flights, month == 1, day == 1)
+```
+
+```{r example_3}
+jan1
+```
+
+```{r example_4}
+(jan1 <- filter(flights, month == 1, day == 1))
+```
+
+##### 5.2.2 Comparisons
+
+To use filtering effectively, you have to know how to select the observations that you want using the comparison operators. R provides the standard suite: >, >=, <, <=, != (not equal), and == (equal).
+
+When you’re starting out with R, the easiest mistake to make is to use = instead of == when testing for equality.
+
+```{r example_5}
+#filter(flights, month = 1)
+```
+
+There’s another common problem you might encounter when using ==: floating point numbers. These results might surprise you!
+
+```{r example_6}
+sqrt(2) ^ 2 == 2
+```
+
+Computers use finite precision arithmetic (they obviously can’t store an infinite number of digits!) so remember that every number you see is an approximation. Instead of relying on ==, use near():
+
+##### 5.2.2 Logical operators
+
+Multiple arguments to filter() are combined with “and”: every expression must be true in order for a row to be included in the output. For other types of combinations, you’ll need to use Boolean operators yourself: & is “and”, | is “or”, and ! is “not”.
+
+The following code finds all flights that departed in November or December:
+
+```{r example_7}
+filter(flights, month == 11 | month == 12)
+```
+
+The order of operations doesn’t work like English. You can’t write filter(flights, month == (11 | 12)), which you might literally translate into “finds all flights that departed in November or December”. Instead it finds all months that equal 11 | 12, an expression that evaluates to TRUE. In a numeric context (like here), TRUE becomes one, so this finds all flights in January, not November or December. This is quite confusing!
+
+A useful short-hand for this problem is x %in% y. This will select every row where x is one of the values in y. We could use it to rewrite the code above:
+
+```{r example_8}
+(nov_dec <- filter(flights, month %in% c(11, 12)))
+```
+
+Sometimes you can simplify complicated subsetting by remembering De Morgan’s law: !(x & y) is the same as !x | !y, and !(x | y) is the same as !x & !y. For example, if you wanted to find flights that weren’t delayed (on arrival or departure) by more than two hours, you could use either of the following four filters:
+
+```{r example_9}
+filter(flights, !(dep_delay > 120) & !(arr_delay > 120))
+filter(flights, !(dep_delay > 120), !(arr_delay > 120)) #same as above, but with commas
+filter(flights, !(arr_delay > 120 | dep_delay > 120)) #De Morgan's Law
+filter(flights, arr_delay <= 120 & dep_delay <= 120)
+```
+
+##### 5.2.3 Missing values
+
+One important feature of R that can make comparison tricky are missing values, or NAs (“not availables”). NA represents an unknown value so missing values are “contagious”: almost any operation involving an unknown value will also be unknown.
+
+```{r example_10}
+100 == NA
+2 > NA
+x <- NA
+is.na(x)
+```
+
+How do I get rid of NA's on my dataset?
+
+```{r example_11}
+filter(flights, is.na(dep_time))
+filter(flights, !is.na(dep_time))
+withoutNA <- filter(flights, !is.na(dep_time))
+withoutNA
+
+filter(withoutNA, is.na(dep_time))
+```
+
+##### 5.2.4 Exercises
+
+> 1. Find all flights that
+
+Had an arrival delay of two or more hours
+
+```{r exercise_5.2.1.a}
+filter(flights, arr_delay >= 120)
+```
+
+Flew to Houston (IAH or HOU)
+
+```{r exercise_5.2.1.b}
+filter(flights, dest == 'IAH' | dest == 'HOU')
+filter(flights, dest %in% c('IAH', 'HOU'))
+```
+
+Were operated by United (UA), American (AA), or Delta (DL)
+
+```{r exercise_5.2.1.c}
+filter(flights, carrier %in% c('UA', 'AA', 'DL'))
+```
+
+Departed in summer (July, August, and September)
+
+```{r exercise_5.2.1.d}
+filter(flights, month %in% c(7, 8, 9))
+```
+
+Arrived more than two hours late, but (AND) didn’t leave late
+
+```{r exercise_5.2.1.e}
+filter(flights, arr_delay > 120 & dep_delay <= 0)
+filter(flights, arr_delay > 120, dep_delay <= 0)
+```
+
+Were delayed by at least an hour, but made up over 30 minutes in flight
+
+```{r exercise_5.2.1.f}
+filter(flights, dep_delay >= 60, dep_delay - arr_delay > 30)
+```
+
+Departed between midnight and 6am (inclusive)
+
+```{r exercise_5.2.1.g}
+filter(flights, between(dep_time, 00, 600))
+```
+
+> 2. Another useful dplyr filtering helper is between(). What does it do? Can you use it to simplify the code needed to answer the previous challenges?
+
+The expression between(x, left, right) is equivalent to x >= left & x <= right.
+
+Of the answers in the previous question, we could simplify the statement of departed in summer (month >= 7 & month <= 9) using the between() function.
+
+```{r exercise_5.2.2}
+filter(flights, between(dep_time, 00, 600))
+```
+
+> 3. How many flights have a missing dep_time? What other variables are missing? What might these rows represent?
+
+```{r exercise_5.2.3.a}
+filter(flights, is.na(dep_time))
+```
+
+```{r exercise_5.2.3.b}
+summary(flights)
+```
+
+### 5.3 Arrange rows with arrange()
+
+```{r}
+flights
+```
+
+
+arrange() works similarly to filter() except that instead of selecting rows, it changes their order. It takes a data frame and a set of column names (or more complicated expressions) to order by. If you provide more than one column name, each additional column will be used to break ties in the values of preceding columns:
+
+```{r example_12}
+arrange(flights, dep_delay)
+arrange(flights, dep_delay, month)
+arrange(flights, dep_delay, month, day)
+```
+
+Use desc() to re-order by a column in descending order:
+
+```{r example_13}
+arrange(flights, desc(dep_delay))
+```
+
+**Missing values are always sorted at the end**
+
+```{r}
+#newDataBase <- filter(database, !is.na(desired_variable))
+```
+
+##### 5.3.1 Exercises
+
+> 3. Sort flights to find the fastest (highest speed) flights.
+
+speed = distance / time (mph)
+
+```{r exercise_5.3.3}
+arrange(flights, air_time) #incorrect
+
+arrange(flights, desc(distance / air_time))
+```
+
+> 4. Which flights travelled the farthest? Which travelled the shortest?
+
+```{r exercise_5.3.4}
+arrange(flights, desc(distance))
+
+arrange(flights, distance)
+```
+
+### 5.4 Select columns with select()
+
+It’s not uncommon to get datasets with hundreds or even thousands of variables. In this case, the first challenge is often narrowing in on the variables you’re actually interested in. select() allows you to rapidly zoom in on a useful subset using operations based on the names of the variables.
+
+```{r example_14}
+select(flights, year, month, day)
+select(flights, year:day)
+
+select(flights, -(year:day))
+select(flights, dep_time:time_hour)
+```
+
+There are a number of helper functions you can use within select()
+
+
+```{r example_16}
+select(flights, starts_with('dep'))
+select(flights, ends_with('delay')) 
+```
+
+select() can be used to rename variables, but it’s rarely useful because it drops all of the variables not explicitly mentioned. Instead, use rename(), which is a variant of select() that keeps all the variables that aren’t explicitly mentioned:
+
+```{r}
+#rename(database, new name = old name)
+
+rename(flights, tail_num = tailnum)
+```
+
+Another option is to use select() in conjunction with the everything() helper. This is useful if you have a handful of variables you’d like to move to the start of the data frame.
+
+```{r example_17}
+flights
+
+select(flights, dep_delay, arr_delay, everything())
+```
+
+##### 5.4.1 Exercises
+
+> 1. Brainstorm as many ways as possible to select dep_time, dep_delay, arr_time, and arr_delay from flights.
+
+```{r exercise_5.4.1}
+select(flights, starts_with('dep') | starts_with('arr'))
+select(flights, ends_with('delay') | ends_with('time')) 
+select(flights) 
+
+#Second one does not work because of the fact that more variables end in time
+```
+
+> 2. What happens if you include the name of a variable multiple times in a select() call?
+
+```{r exercise_5.4.2}
+select(flights, air_time, distance, air_time)
+```
+
+### 5.5 Add new variables with mutate()
+
+Besides selecting sets of existing columns, it's often useful to add new columns that are functions of existing columns. 
+
+```{r}
+flights_narrow <- select(flights, year:day, ends_with('delay'), distance, air_time)
+flights_narrow
+```
+
+Use the mutate() function to create new columns 
+
+```{r}
+mutate(flights_narrow, gain = dep_delay - arr_delay, speed = distance / air_time * 60) 
+```
+
+```{r}
+mutate(flights_narrow, gain = dep_delay - arr_delay, speed = distance / air_time * 60, gain_per_hour = gain / air_time)
+```
+
+If you only wan to keep the new variables, then use the transmute() function: 
+
+
+```{r}
+transmute(flights_narrow, gain = dep_delay - arr_delay, speed = distance / air_time * 60, gain_per_hour = gain / air_time)
+```
+
+
+### 5.6 Grouped summaries with summarize() 
+
+The last key verb is summarize(). It collapses a data frame into a single row 
+
+```{r}
+summarize(flights, delay = mean(dep_delay, na.rm = TRUE) )
+```
+
+```{r}
+by_day <- group_by(flights, year, month, day) 
+
+summarize(by_day, delay = mean(dep_delay, na.rm = TRUE))
+```
+
+
+
+
+
+```{r}
+by_carrier <- group_by(flights, carrier) 
+
+summarize(by_carrier, delay = mean(dep_delay, na.rm = TRUE))
+```
+
+```{r}
+by_airport <- group_by(flights, origin) 
+
+summarize(by_airport, delay = mean(dep_delay, na.rm = TRUE))
+```
+
+##### 5.6.1 Combining multiple operations with the pipe 
+
+Group flights by destination: 
+
+```{r}
+by_dest <- group_by(flights, dest)
+
+by_dest
+```
+
+Summarize the group, using average distance, average delay, and count: 
+
+```{r}
+delays <- summarize(by_dest, 
+          count = n(), 
+          dist = mean(distance, na.rm = TRUE),
+          delay = mean(arr_delay, na.rm = TRUE)
+)
+
+delays 
+```
+
+Visualize your data: 
+Make a plot of distance versus delay, with count mapped to the size aesthetic. Improve if necessary
+
+```{r}
+ggplot(data = delays) + 
+  geom_point(mapping = aes(x = dist, y = delay, size = count))
+```
+
+
+Remove "noisy" data points: 
+
+```{r}
+delays <- filter(delays, count > 20, dest != 'HNL' )
+
+delays
+```
+
+```{r}
+ggplot(data = delays) + 
+  geom_point(mapping = aes(x = dist, y = delay, size = count))
+```
+
+Clean up your plot further: 
+
+```{r}
+ggplot(data = delays, mapping = aes(x = dist, y = delay))
+```
+
+
+```{r}
+by_dest <- flights %>%  
+  group_by(dest) %>% 
+  summarize(
+    count = n(), 
+    dist = mean(distance, na.rm = TRUE), 
+    delay = mean(arr_delay, na.rm = TRUE)
+  ) %>%
+  
+filter(count > 20, dest != 'HNL')
+
+ggplot(data = delays, mapping = aes(x = dist, y = delay)) + 
+  geom_point(aes(size = count, alpha = 1/3)) + 
+  geom_smooth(se = FALSE)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
