@@ -1,0 +1,79 @@
+---
+title: "Data Visualization Project"
+author: "Jim Rouse"
+date: "9/9/2020"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(readr)
+kc_house_data <- read_csv("C:/Users/Jim/Downloads/kc_house_data.csv")
+View(kc_house_data)
+```
+
+```{r}
+library(readr)
+nba2k20_full <- read_csv("C:/Users/Jim/Downloads/nba2k20.full.csv")
+View(nba2k20_full)
+```
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(tidyverse)
+```
+```{r}
+library(ggplot2)
+```
+
+
+
+## Scatterplot of Home Prices Sales in King Country, NY based on Condition, Zip Code, and Square Footage
+
+
+```{r}
+ggplot(data = kc_house_data) + geom_point(mapping = aes(x = sqft_living , y = price , color = zipcode)) + facet_wrap(~condition) + scale_y_log10(labels = scales::dollar) + scale_x_log10() + labs(x = "Square Feet of Living Space", y = "Price of House", caption = "Source: House Sales in King County USA (https://www.kaggle.com/harlfoxem/housesalesprediction)", title = "Factors of Home Sales Price in King County, NY") + geom_smooth(mapping = aes(x = sqft_living , y = price))
+```
+
+
+## What This Data Tells Us 
+This data shows us the different factors that effect home price in King County NY. Some conclusions we could take from this data are the number of houses we have in each of the five categorizations of the condition of the house, or the association between the square feet of a house, and the price that the house will be able to sell for. 
+
+
+
+
+
+
+
+
+
+## Bar Chart of Number of NBA players based on Position (all Positions Played Included), Round Drafted, and 
+```{r}
+ggplot(data = nba2k20.full) + geom_bar(mapping = aes(x = draft_round, fill = position) , position = "dodge") + labs(x = "Round Drafted", y = "Number of Players", caption = "Source: House Sales in King County, NY (https://www.kaggle.com/harlfoxem/housesalesprediction)", title = "NBA Players Based on Round Drafted and Position")
+```
+
+
+## What This Data Tells Us
+This data shows us the different number of NBA players based on the round they were drafted in, as well as the position they play. We can take a lot of insights from this data, such as the fact that we can see that Guard is the most popular position for someone to play in the NBA, and if your team needs a center, it would be best to draft him in the first round due to the fact that not a lot of centers that are drafted second round or go undrafted end up staying in the NBA. 
+
+
+
+
+
+
+
+
+
+
+
+
